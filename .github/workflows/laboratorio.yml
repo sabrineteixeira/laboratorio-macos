@@ -1,0 +1,134 @@
+
+name: Laboratorio pratico macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demonstracoes:
+    runs-on: macos-15
+
+    steps:
+      - name: Identificacao do macOS
+        run: |
+          mkdir -p evidencias
+          LOG="evidencias/relatorio-macos.txt"
+          exec > >(tee -a "$LOG") 2>&1
+
+          echo "================================"
+          echo "IDENTIFICACAO DO SISTEMA"
+          echo "================================"
+          sw_vers
+          uname -a
+          sysctl kern.ostype kern.osrelease kern.osversion
+
+      - name: Demonstracao 1 - Processos
+        run: |
+          echo "================================"
+          echo "DEMONSTRACAO 1 - PROCESSOS"
+          echo "================================"
+
+          sleep 60 &
+          PID=$!
+
+          echo "Processo de teste iniciado:"
+          ps -p "$PID" -o pid,ppid,state,%cpu,%mem,command
+
+          echo "Encerrando processo..."
+          kill -TERM "$PID"
+          wait "$PID" 2>/dev/null || true
+
+          echo "Verificando encerramento:"
+          ps -p "$PID" -o pid,command || echo "Processo encerrado."
+
+      - name: Demonstracao 2 - CPU
+        run: |
+          echo "================================"
+          echo "DEMONSTRACAO 2 - CPU"
+          echo "================================"
+
+          yes > /dev/null &
+          P1=$!
+
+          yes > /dev/null &
+          P2=$!
+
+          sleep 3
+
+          echo "Processos concorrentes:"
+          ps -p "$P1,$P2" -o pid,%cpu,%mem,command
+
+          echo "Monitoramento geral da CPU:"
+          top -l 2 -s 1 -o cpu > evidencias/cpu.txt
+          head -n 25 evidencias/cpu.txt
+
+          kill "$P1" "$P2"
+          wait "$P1" "$P2" 2>/dev/null || true
+
+          echo "Processos de teste encerrados."
+
+      - name: Demonstracao 3 - Memoria
+        run: |
+          echo "================================"
+          echo "DEMONSTRACAO 3 - MEMORIA"
+          echo "================================"
+
+          echo "Memoria antes:"
+          vm_stat
+
+          python3 -c 'import time; dados=bytearray(120*1024*1024); [dados.__setitem__(i,1) for i in range(0,len(dados),4096)]; print("120 MB alocados e preenchidos"); time.sleep(8)' &
+          MPID=$!
+
+          sleep 2
+
+          echo "Processo que alocou memoria:"
+          ps -p "$MPID" -o pid,%cpu,%mem,rss,command
+
+          echo "Memoria durante o teste:"
+          vm_stat
+
+          wait "$MPID"
+
+          echo "Memoria depois do teste:"
+          vm_stat
+
+          echo "Pressao de memoria:"
+          memory_pressure || true
+
+      - name: Demonstracao 4 - Seguranca
+        run: |
+          echo "================================"
+          echo "DEMONSTRACAO 4 - PERMISSOES"
+          echo "================================"
+
+          ARQUIVO=$(mktemp)
+          echo "Arquivo de teste" > "$ARQUIVO"
+
+          echo "Permissao inicial:"
+          ls -l "$ARQUIVO"
+
+          chmod 600 "$ARQUIVO"
+
+          echo "Permissao alterada:"
+          ls -l "$ARQUIVO"
+          stat -f "%Sp %Su %N" "$ARQUIVO"
+
+          rm "$ARQUIVO"
+
+      - name: Demonstracao 5 - Energia
+        run: |
+          echo "================================"
+          echo "DEMONSTRACAO 5 - ENERGIA"
+          echo "================================"
+
+          pmset -g || true
+          pmset -g batt || true
+
+      - name: Salvar evidencias
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-laboratorio-macos
+          path: evidencias/
