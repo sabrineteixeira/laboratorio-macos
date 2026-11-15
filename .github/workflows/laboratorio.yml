@@ -1,4 +1,3 @@
-
 name: Laboratorio pratico macOS
 
 on:
@@ -12,43 +11,44 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - name: Preparar evidencias
-        run: |
-          mkdir -p evidencias
-          touch evidencias/relatorio-macos.txt
-
       - name: Identificacao do macOS
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
+          mkdir -p evidencias
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
 
+          echo "================================"
           echo "IDENTIFICACAO DO SISTEMA"
+          echo "================================"
           sw_vers
           uname -a
           sysctl kern.ostype kern.osrelease kern.osversion
 
       - name: Demonstracao 1 - Processos
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
-
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
+          echo "================================"
           echo "DEMONSTRACAO 1 - PROCESSOS"
+          echo "================================"
 
           sleep 60 &
           PID=$!
 
-          echo "Processo iniciado:"
+          echo "Processo de teste iniciado:"
           ps -p "$PID" -o pid,ppid,state,%cpu,%mem,command
 
           echo "Encerrando processo..."
           kill -TERM "$PID"
           wait "$PID" 2>/dev/null || true
 
+          echo "Verificando encerramento:"
           ps -p "$PID" -o pid,command || echo "Processo encerrado."
 
       - name: Demonstracao 2 - CPU
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
-
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
+          echo "================================"
           echo "DEMONSTRACAO 2 - CPU"
+          echo "================================"
 
           yes > /dev/null &
           P1=$!
@@ -61,20 +61,21 @@ jobs:
           echo "Processos concorrentes:"
           ps -p "$P1,$P2" -o pid,%cpu,%mem,command
 
-          echo "Monitoramento da CPU:"
+          echo "Monitoramento geral da CPU:"
           top -l 2 -s 1 -o cpu > evidencias/cpu.txt
           head -n 25 evidencias/cpu.txt
 
           kill "$P1" "$P2"
           wait "$P1" "$P2" 2>/dev/null || true
 
-          echo "Processos encerrados."
+          echo "Processos de teste encerrados."
 
       - name: Demonstracao 3 - Memoria
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
-
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
+          echo "================================"
           echo "DEMONSTRACAO 3 - MEMORIA"
+          echo "================================"
 
           echo "Memoria antes:"
           vm_stat
@@ -84,15 +85,15 @@ jobs:
 
           sleep 2
 
-          echo "Processo utilizando memoria:"
+          echo "Processo que alocou memoria:"
           ps -p "$MPID" -o pid,%cpu,%mem,rss,command
 
-          echo "Memoria durante:"
+          echo "Memoria durante o teste:"
           vm_stat
 
           wait "$MPID"
 
-          echo "Memoria depois:"
+          echo "Memoria depois do teste:"
           vm_stat
 
           echo "Pressao de memoria:"
@@ -100,9 +101,10 @@ jobs:
 
       - name: Demonstracao 4 - Seguranca
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
-
-          echo "DEMONSTRACAO 4 - SEGURANCA"
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
+          echo "================================"
+          echo "DEMONSTRACAO 4 - PERMISSOES"
+          echo "================================"
 
           ARQUIVO=$(mktemp)
           echo "Arquivo de teste" > "$ARQUIVO"
@@ -120,9 +122,10 @@ jobs:
 
       - name: Demonstracao 5 - Energia
         run: |
-          exec >> evidencias/relatorio-macos.txt 2>&1
-
+          exec > >(tee -a evidencias/relatorio-macos.txt) 2>&1
+          echo "================================"
           echo "DEMONSTRACAO 5 - ENERGIA"
+          echo "================================"
 
           pmset -g || true
           pmset -g batt || true
